@@ -2,13 +2,21 @@ use alloc::vec::Vec;
 
 use crate::{ByteLength, Commitment, Decodeable, Encodeable, Error, Nullifier, Result};
 
+/// Represents a transaction in the system, consisting of inputs and outputs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
+    /// The inputs of the transaction, represented as a vector of Nullifiers.
     pub inputs: Vec<Nullifier>,
+    /// The outputs of the transaction, represented as a vector of Commitments.
     pub outputs: Vec<Commitment>,
 }
 
 impl Encodeable for Transaction {
+    /// Encodes the Transaction into a byte vector.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<u8>` containing the encoded Transaction.
     fn encode(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
@@ -31,6 +39,7 @@ impl Encodeable for Transaction {
 }
 
 impl ByteLength for Transaction {
+    /// Returns the byte length of the encoded Transaction.
     fn byte_length(&self) -> usize {
         self.inputs
             .iter()
@@ -45,6 +54,19 @@ impl ByteLength for Transaction {
 }
 
 impl Decodeable for Transaction {
+    /// Decodes a byte slice into a Transaction.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - A slice of bytes to decode from.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing either the successfully decoded Transaction or an error.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input byte slice is too short or if decoding fails.
     fn decode(bytes: &[u8]) -> Result<Self> {
         let mut inputs = Vec::new();
         let mut outputs = Vec::new();
@@ -98,6 +120,7 @@ mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
+    /// Test the encoding and decoding of transactions.
     #[test]
     fn test_transaction_encode_decode() {
         init();
