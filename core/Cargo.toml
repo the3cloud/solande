@@ -1,0 +1,12 @@
+[package]
+name = "solande-core"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+log = { workspace = true }
+primitive-types = { workspace = true, default-features = false }
+
+[dev-dependencies]
+env_logger = { workspace = true }
+primitive-types = { workspace = true, features = ["std", "rand"] }
