@@ -37,3 +37,11 @@ pub trait ByteLength {
     /// A `usize` representing the number of bytes in the encoded form of the type.
     fn byte_length(&self) -> usize;
 }
+
+pub trait Encryptor {
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>>;
+}
+
+pub trait Decryptor {
+    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>>;
+}

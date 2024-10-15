@@ -16,3 +16,6 @@ pub use commitment::*;
 
 mod prelude;
 pub use prelude::*;
+
+mod unencrypted;
+pub use unencrypted::*;
