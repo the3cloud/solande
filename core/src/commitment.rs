@@ -1,11 +1,12 @@
 use alloc::vec::Vec;
+use digest::Digest;
 use primitive_types::{H160, H256, U256};
 
 use crate::{ByteLength, Decodeable, Encodeable, Error, Result};
 
 /// Transparent unspent output
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnspentOutput {
+pub struct Output {
     /// The amount of the output.
     pub amount: U256,
     /// The asset identifier.
@@ -14,16 +15,31 @@ pub struct UnspentOutput {
     pub owner: H160,
 }
 
+impl Output {
+    /// Computes the commitment of the UnspentOutput using the provided salt.
+    ///
+    /// Note: Digest function must return 32 bytes hash.
+    pub fn commitment<D: Digest>(&self, salt: H256) -> PrivateCommitment {
+        let mut hasher = D::new();
+        hasher.update(self.amount.to_big_endian());
+        hasher.update(self.asset.as_bytes());
+        hasher.update(self.owner.as_bytes());
+        hasher.update(salt.as_bytes());
+
+        PrivateCommitment(H256::from_slice(hasher.finalize().as_slice()))
+    }
+}
+
 /// The byte length of an UnspentOutput when encoded.
 const UNSPENT_OUTPUT_BYTE_LENGTH: usize = 84; // 32 (amount) + 32 (asset) + 20 (owner)
 
-impl ByteLength for UnspentOutput {
+impl ByteLength for Output {
     fn byte_length(&self) -> usize {
         UNSPENT_OUTPUT_BYTE_LENGTH
     }
 }
 
-impl Encodeable for UnspentOutput {
+impl Encodeable for Output {
     /// Encodes the UnspentOutput into a byte vector.
     fn encode(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -34,7 +50,7 @@ impl Encodeable for UnspentOutput {
     }
 }
 
-impl Decodeable for UnspentOutput {
+impl Decodeable for Output {
     /// Decodes a byte slice into an UnspentOutput.
     ///
     /// # Errors
@@ -51,7 +67,7 @@ impl Decodeable for UnspentOutput {
         let amount = U256::from_big_endian(&bytes[..32]);
         let asset = H256::from_slice(&bytes[32..64]);
         let owner = H160::from_slice(&bytes[64..84]);
-        Ok(UnspentOutput {
+        Ok(Output {
             amount,
             asset,
             owner,
@@ -59,13 +75,29 @@ impl Decodeable for UnspentOutput {
     }
 }
 
+/// A private commitment represented by a 256-bit hash.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrivateCommitment(pub H256);
+
+impl PrivateCommitment {
+    /// Computes the nullifier of the PrivateCommitment using the provided salt.
+    ///
+    /// Note: Digest function must return 32 bytes hash.
+    pub fn nullifier<D: Digest>(&self, salt: H256) -> H256 {
+        let mut hasher = D::new();
+        hasher.update(self.0.as_bytes());
+        hasher.update(salt.as_bytes());
+        H256::from_slice(hasher.finalize().as_slice())
+    }
+}
+
 /// Represents a commitment in the system, which can be either private or public.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Commitment {
     /// A private commitment represented by a 256-bit hash.
-    Private(H256),
+    Private(PrivateCommitment),
     /// A public commitment represented by an UnspentOutput.
-    Public(UnspentOutput),
+    Public(Output),
 }
 
 impl ByteLength for Commitment {
@@ -84,7 +116,7 @@ impl Encodeable for Commitment {
             Commitment::Private(commitment) => {
                 let mut bytes = Vec::with_capacity(33);
                 bytes.push(1u8);
-                bytes.extend_from_slice(commitment.as_bytes());
+                bytes.extend_from_slice(commitment.0.as_bytes());
                 bytes
             }
             Commitment::Public(output) => {
@@ -118,10 +150,10 @@ impl Decodeable for Commitment {
                 }
 
                 let commitment = H256::from_slice(&bytes[1..33]);
-                Ok(Commitment::Private(commitment))
+                Ok(Commitment::Private(PrivateCommitment(commitment)))
             }
             2 => {
-                let output = UnspentOutput::decode(&bytes[1..])?;
+                let output = Output::decode(&bytes[1..])?;
                 Ok(Commitment::Public(output))
             }
             _ => Err(Error::UnsupportedCommitmentType),
@@ -137,13 +169,13 @@ mod tests {
     #[test]
     fn test_commitment_encode_decode() {
         // Test Private Commitment
-        let private_commitment = Commitment::Private(H256::random());
+        let private_commitment = Commitment::Private(PrivateCommitment(H256::random()));
         let encoded_private = private_commitment.encode();
         let decoded_private = Commitment::decode(&encoded_private).unwrap();
         assert_eq!(private_commitment, decoded_private);
 
         // Test Public Commitment
-        let public_output = UnspentOutput {
+        let public_output = Output {
             amount: U256::from(1000u32),
             asset: H256::random(),
             owner: H160::random(),

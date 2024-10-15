@@ -4,6 +4,7 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
+digest = "0.10.7"
 log = { workspace = true }
 primitive-types = { workspace = true, default-features = false }
 

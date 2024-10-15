@@ -111,7 +111,7 @@ impl Decodeable for Transaction {
 
 #[cfg(test)]
 mod tests {
-    use crate::{OutputId, UnspentOutput};
+    use crate::{Output, OutputId, PrivateCommitment};
 
     use super::*;
     use primitive_types::{H160, H256, U256};
@@ -136,8 +136,8 @@ mod tests {
             ]
             .to_vec(),
             outputs: [
-                Commitment::Private(H256::random()),
-                Commitment::Public(UnspentOutput {
+                Commitment::Private(PrivateCommitment(H256::random())),
+                Commitment::Public(Output {
                     amount: U256::from(1000u32),
                     asset: H256::random(),
                     owner: H160::random(),
